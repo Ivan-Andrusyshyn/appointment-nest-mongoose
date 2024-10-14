@@ -64,7 +64,10 @@ export class AppService {
       const date = callbackQuery.data.split('_')[1];
       ctx.session.appointmentDate = date;
       ctx.session.step = 'waiting_for_time';
-      await this.tgInterfaceService.sendTimeKeyboard(ctx);
+      await this.tgInterfaceService.sendTimeKeyboard(
+        ctx,
+        ctx.session.appointmentDate,
+      );
     } else {
       await ctx.reply('Помилка! Не вдалося отримати дату. Спробуйте ще раз.');
     }

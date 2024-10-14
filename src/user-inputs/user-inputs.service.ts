@@ -38,7 +38,10 @@ export class UserInputsService {
   async handleDateInput(ctx: BotContext, userMessage: string) {
     ctx.session.appointmentDate = userMessage;
     ctx.session.step = 'waiting_for_time';
-    await this.tgInterfaceService.sendTimeKeyboard(ctx);
+    await this.tgInterfaceService.sendTimeKeyboard(
+      ctx,
+      ctx.session.appointmentDate,
+    );
   }
 
   async handleDefaultStep(ctx: BotContext) {

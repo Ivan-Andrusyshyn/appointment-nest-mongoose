@@ -1,19 +1,59 @@
 import { Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+
 import { BotContext } from 'src/bot-context.interface';
+import {
+  Appointment,
+  AppointmentDocument,
+} from 'src/models/appointment.schema';
 
 @Injectable()
 export class TgInterfaceService {
-  async sendTimeKeyboard(ctx: BotContext) {
+  constructor(
+    @InjectModel(Appointment.name)
+    private readonly appointmentModel: Model<AppointmentDocument>,
+  ) {}
+
+  async sendTimeKeyboard(ctx: BotContext, selectedDate: Date | string) {
+    let dateToUse: Date;
+    if (typeof selectedDate === 'string') {
+      dateToUse = new Date(selectedDate);
+    } else {
+      dateToUse = selectedDate;
+    }
+
+    const appointments = await this.appointmentModel.find({
+      appointmentDate: {
+        $gte: new Date(dateToUse.setHours(0, 0, 0, 0)),
+        $lt: new Date(dateToUse.setHours(23, 59, 59, 999)),
+      },
+    });
+
+    const bookedTimes = appointments.map((appointment) => {
+      const date = new Date(appointment.appointmentDate);
+      return `${date.getHours()}:00`;
+    });
+
     const buttons = [];
     const startHour = 9;
     const endHour = 17;
     let row = [];
 
     for (let hour = startHour; hour <= endHour; hour++) {
-      row.push({
-        text: `${hour}:00`,
-        callback_data: `time_${hour}:00`,
-      });
+      const time = `${hour}:00`;
+
+      if (!bookedTimes.includes(time)) {
+        row.push({
+          text: time,
+          callback_data: `time_${time}`,
+        });
+      } else {
+        row.push({
+          text: `❌ ${time}`,
+          callback_data: `disabled_${time}`,
+        });
+      }
 
       if (row.length === 3) {
         buttons.push(row);
@@ -27,7 +67,12 @@ export class TgInterfaceService {
 
     await ctx.reply('Оберіть час:', {
       reply_markup: {
-        inline_keyboard: buttons,
+        inline_keyboard: buttons.map((row) =>
+          row.map((button) => ({
+            text: button.text,
+            callback_data: button.callback_data,
+          })),
+        ),
       },
     });
   }
@@ -55,7 +100,7 @@ export class TgInterfaceService {
     ) {
       row.push({
         text: date.toLocaleDateString(),
-        callback_data: `date_${date.toISOString().split('T')[0]}`, // Сохранение даты в формате YYYY-MM-DD
+        callback_data: `date_${date.toISOString().split('T')[0]}`,
       });
 
       if (row.length === 3) {
