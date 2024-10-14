@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ваша зустріч заброньована</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f4;
+        color: #333;
+        padding: 20px;
+        line-height: 1.6;
+      }
+      h1 {
+        color: #2c3e50;
+      }
+      .container {
+        background: #fff;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+      strong {
+        color: #2980b9;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Привіт, <%= name %>!</h1>
+      <p>
+        Ваша зустріч заброньована на <strong><%= date %></strong> о
+        <strong><%= time %></strong>.
+      </p>
+      <p>Email: <strong><%= email %></strong>.</p>
+      <p>Дякуємо, що обрали нас!</p>
+    </div>
+  </body>
+</html>
