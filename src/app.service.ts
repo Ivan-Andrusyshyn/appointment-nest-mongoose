@@ -1,67 +1,157 @@
 import { Ctx, Update, Start, Action, On } from 'nestjs-telegraf';
+import { Message } from 'telegraf/typings/core/types/typegram';
+
 import { BotContext } from './bot-context.interface';
 import { AppointmentService } from './appointment/appointment.service';
-import { Message } from 'telegraf/typings/core/types/typegram';
+import { AppointmentDto } from './appointment/dto/appointment.dto';
+import { TgInterfaceService } from './tg-interface/tg-interface.service';
+import { UserInputsService } from './user-inputs/user-inputs.service';
 
 @Update()
 export class AppService {
-  constructor(private readonly appointmentService: AppointmentService) {}
+  constructor(
+    private readonly tgInterfaceService: TgInterfaceService,
+    private readonly userInputsService: UserInputsService,
+    private readonly appointmentService: AppointmentService,
+  ) {}
 
   @Start()
   async startCommand(@Ctx() ctx: BotContext) {
+    ctx.session = {};
     await ctx.reply(
-      'Вітаємо! Ви можете записатися на зустріч. Введіть дату у форматі YYYY-MM-DD:',
+      "Вітаємо! Ви можете записатися на зустріч. Введіть ваше ім'я:",
     );
-    ctx.session.step = 'waiting_for_date';
+    ctx.session.step = 'waiting_for_name';
   }
 
   @On('text')
   async onText(@Ctx() ctx: BotContext) {
     const message = ctx.message as Message;
 
-    if (!this.isTextMessage(message)) {
+    if (!this.userInputsService.isTextMessage(message)) {
       await ctx.reply('Будь ласка, надішліть текстове повідомлення.');
       return;
     }
 
     const userMessage = message.text;
 
-    if (ctx.session.step === 'waiting_for_date') {
-      ctx.session.date = userMessage;
+    switch (ctx.session.step) {
+      case 'waiting_for_name':
+        await this.userInputsService.handleNameInput(ctx, userMessage);
+        break;
+
+      case 'waiting_for_phone':
+        await this.userInputsService.handlePhoneInput(ctx, userMessage);
+        break;
+
+      case 'waiting_for_email':
+        await this.userInputsService.handleEmailInput(ctx, userMessage);
+        break;
+
+      case 'waiting_for_date':
+        await this.userInputsService.handleDateInput(ctx, userMessage);
+        break;
+
+      default:
+        await this.userInputsService.handleDefaultStep(ctx);
+    }
+  }
+
+  @Action(/date_(.+)/)
+  async onDateSelected(@Ctx() ctx: BotContext) {
+    const callbackQuery = ctx.callbackQuery;
+    if (callbackQuery && 'data' in callbackQuery) {
+      const date = callbackQuery.data.split('_')[1];
+      ctx.session.appointmentDate = date;
       ctx.session.step = 'waiting_for_time';
-      await ctx.reply('Введіть час зустрічі у форматі HH:MM:');
-    } else if (ctx.session.step === 'waiting_for_time') {
-      const username = ctx.message.from.username;
-      const date = new Date(ctx.session.date);
-      const time = userMessage;
-
-      await this.appointmentService.createMeeting(username, date, time);
-      ctx.session = {}; // Сброс сессии
-
-      await ctx.reply(
-        `Вашу зустріч заброньовано на ${ctx.session.date} о ${time}`,
-      );
-    }
-  }
-
-  @Action('view_meetings')
-  async viewMeetings(@Ctx() ctx: BotContext) {
-    const meetings = await this.appointmentService.getMeetings(
-      ctx.from.username,
-    );
-
-    if (meetings.length === 0) {
-      await ctx.reply('У вас немає запланованих зустрічей.');
+      await this.tgInterfaceService.sendTimeKeyboard(ctx);
     } else {
-      let message = 'Ваші зустрічі:\n';
-      meetings.forEach((meeting) => {
-        message += `${meeting.appointmentDate.toLocaleDateString()} о ${meeting.appointmentDate.toLocaleTimeString()}\n`;
-      });
-      await ctx.reply(message);
+      await ctx.reply('Помилка! Не вдалося отримати дату. Спробуйте ще раз.');
     }
   }
 
-  private isTextMessage(message: Message): message is Message.TextMessage {
-    return message && 'text' in message;
+  @Action(/time_(.+)/)
+  async onTimeSelected(@Ctx() ctx: BotContext) {
+    const callbackQuery = ctx.callbackQuery;
+    if (callbackQuery && 'data' in callbackQuery) {
+      const time = callbackQuery.data.split('_')[1];
+      const appointmentDto: AppointmentDto = {
+        name: ctx.session.name,
+        phone: ctx.session.phone,
+        email: ctx.session.email,
+        appointmentDate: new Date(`${ctx.session.appointmentDate}T${time}:00`),
+        createdAt: new Date(),
+      };
+
+      await this.appointmentService.createMeeting(appointmentDto);
+      ctx.session = {};
+      await this.showFilledForm(ctx, appointmentDto);
+    } else {
+      await ctx.reply('Помилка! Не вдалося отримати час. Спробуйте ще раз.');
+    }
+  }
+
+  private async showFilledForm(
+    ctx: BotContext,
+    appointmentDto: AppointmentDto,
+  ) {
+    const message = `
+      **Ваші дані для запису:**
+      - Ім'я: ${appointmentDto.name}
+      - Телефон: ${appointmentDto.phone}
+      - Email: ${appointmentDto.email}
+      - Дата зустрічі: ${appointmentDto.appointmentDate.toLocaleString(
+        'uk-UA',
+        this.normalizeReplyDate,
+      )}`;
+
+    await ctx.reply(message, { parse_mode: 'Markdown' });
+
+    await ctx.reply(
+      'Якщо все правильно, натисніть "Підтвердити". Якщо потрібно внести зміни, натисніть "Змінити".',
+      {
+        reply_markup: {
+          keyboard: [['Підтвердити'], ['Змінити']],
+          one_time_keyboard: true,
+          resize_keyboard: true,
+        },
+      },
+    );
+  }
+  @Action('Підтвердити')
+  async onConfirm(@Ctx() ctx: BotContext) {
+    const { name, phone, email, appointmentDate } = ctx.session;
+
+    await this.appointmentService.createMeeting({
+      name,
+      phone,
+      email,
+      appointmentDate,
+      createdAt: new Date(),
+    });
+    ctx.session = {};
+
+    await ctx.reply(
+      `Вашу зустріч заброньовано на ${appointmentDate.toLocaleString('uk-UA', this.normalizeReplyDate)}`,
+    );
+  }
+
+  @Action('Змінити')
+  async onChange(@Ctx() ctx: BotContext) {
+    ctx.session = {};
+    await ctx.reply(
+      "Вітаємо! Ви можете записатися на зустріч. Введіть ваше ім'я:",
+    );
+    ctx.session.step = 'waiting_for_name';
+  }
+
+  private get normalizeReplyDate(): Intl.DateTimeFormatOptions {
+    return {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    };
   }
 }

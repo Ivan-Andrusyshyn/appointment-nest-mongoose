@@ -1,9 +1,12 @@
 import { Context } from 'telegraf';
 
-interface SessionData {
+export interface SessionData {
+  name?: string;
+  phone?: string;
+  email?: string;
+  appointmentDate?: Date | string;
+  createdAt?: Date;
   step?: string;
-  date?: string;
-  time?: string;
 }
 
 export interface BotContext extends Context {

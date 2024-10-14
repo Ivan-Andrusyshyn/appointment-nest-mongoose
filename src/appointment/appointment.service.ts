@@ -5,6 +5,7 @@ import {
   Appointment,
   AppointmentDocument,
 } from 'src/models/appointment.schema';
+import { AppointmentDto } from './dto/appointment.dto';
 
 @Injectable()
 export class AppointmentService {
@@ -13,8 +14,8 @@ export class AppointmentService {
     private meetingModel: Model<AppointmentDocument>,
   ) {}
 
-  async createMeeting(username: string, date: Date, time: string) {
-    const newMeeting = new this.meetingModel({ username, date, time });
+  async createMeeting(appointmentDto: AppointmentDto) {
+    const newMeeting = new this.meetingModel(appointmentDto);
     return newMeeting.save();
   }
 
