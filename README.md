@@ -1,26 +1,26 @@
 # Telegram Bot
 
-Это Telegram бот, разработанный с использованием NestJS и Telegraf, который позволяет пользователям записываться на встречи. Бот собирает информацию, такую как имя, телефон, email и дату встречи, и сохраняет эти данные в базе данных.
+This is a Telegram bot developed using NestJS and Telegraf, allowing users to schedule appointments. The bot collects information such as name, phone number, email, and appointment date, and stores this data in a database.
 
-## Функции
+## Features
 
-- Запись на встречи.
-- Сбор информации от пользователя (имя, телефон, email).
-- Выбор даты и времени встречи.
-- Подтверждение записи.
+- Appointment scheduling.
+- Collecting user information (name, phone number, email).
+- Selecting appointment date and time.
+- Confirmation of appointment.
 
-## Установка
+## Installation
 
-### Предварительные требования
+### Prerequisites
 
-- Node.js (версии 14 и выше)
+- Node.js (version 14 or higher)
 - NestJS
 - Telegraf
-- MongoDB (или другая база данных для хранения информации)
+- MongoDB (or another database for storing information)
 
-### Клонирование репозитория
+### Cloning the Repository
 
 ```bash
-git clone https://github.com/ваш_репозиторий.git
-cd ваш_репозиторий
+git clone https://github.com/your_repository.git
+cd your_repository
 ```
