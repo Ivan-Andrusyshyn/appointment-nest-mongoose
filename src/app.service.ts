@@ -43,6 +43,9 @@ export class AppService {
   private async handleButtons(userMessage, ctx) {
     if (userMessage === 'Підтвердити') {
       const { name, phone, email, appointmentDate } = ctx.session;
+      if (!name || !phone || !email || !appointmentDate) {
+        ctx.session.step = 'waiting_for_name';
+      }
       await ctx.reply(
         `Вашу зустріч заброньовано на ${appointmentDate.toLocaleString('uk-UA', this.normalizeReplyDate)}`,
       );
@@ -101,6 +104,15 @@ export class AppService {
     }
   }
   private async handleSwitcher(ctx, userMessage) {
+    if (userMessage === 'Відмінити запис') {
+      ctx.session = {};
+      await ctx.reply(
+        "Вітаємо! Ви можете записатися на зустріч. Введіть ваше ім'я:",
+      );
+      ctx.session.step = 'cancel_appointment';
+      return;
+    }
+
     switch (ctx.session.step) {
       case 'waiting_for_name':
         await this.userInputsService.handleNameInput(ctx, userMessage);
@@ -122,10 +134,9 @@ export class AppService {
         break;
       case 'waiting_for_cancel_email':
         await this.userInputsService.cancelAppointment(ctx, userMessage);
-        await this.userInputsService.handleDefaultStep(ctx);
         break;
       default:
-        await this.userInputsService.handleDefaultStep(ctx);
+        await this.userInputsService.initBot(ctx);
     }
   }
   private async showFilledForm(

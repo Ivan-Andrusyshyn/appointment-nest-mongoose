@@ -11,6 +11,30 @@ export class UserInputsService {
     private tgInterfaceService: TgInterfaceService,
   ) {}
 
+  async initBot(ctx: BotContext) {
+    const message = ctx.message as Message;
+    if (!this.isTextMessage(message)) return;
+    if (message.text === 'Записатись') {
+      ctx.session = {};
+      await ctx.reply(
+        "Вітаємо! Ви можете записатися на зустріч. Введіть ваше ім'я:",
+      );
+      ctx.session.step = 'waiting_for_name';
+    } else if (message.text === 'Відмінити запис') {
+      ctx.session = {};
+      await ctx.reply("Для початку введіть ваше ім'я:");
+      ctx.session.step = 'cancel_appointment';
+    } else {
+      await ctx.reply('', {
+        reply_markup: {
+          keyboard: [['Записатись', 'Відмінити запис']],
+          one_time_keyboard: true,
+          resize_keyboard: true,
+        },
+      });
+    }
+  }
+
   async handleNameInput(ctx: BotContext, userMessage: string) {
     ctx.session.name = userMessage;
     ctx.session.step = 'waiting_for_phone';
@@ -52,10 +76,22 @@ export class UserInputsService {
       case 'cancel_appointment':
         ctx.session.cancelName = userMessage;
         await ctx.reply('Будь ласка, введіть ваш email:');
+        if (userMessage === 'Записатись') {
+          ctx.session = {};
+          await ctx.reply(
+            "Вітаємо! Ви можете записатися на зустріч. Введіть ваше ім'я:",
+          );
+          ctx.session.step = 'waiting_for_name';
+          break;
+        }
         ctx.session.step = 'waiting_for_cancel_email';
         break;
 
       case 'waiting_for_cancel_email':
+        if (!this.validateEmail(userMessage)) {
+          await ctx.reply('Будь ласка, введіть коректну електронну пошту.');
+          return;
+        }
         ctx.session.cancelEmail = userMessage;
 
         const deletedAppointment =
@@ -70,7 +106,7 @@ export class UserInputsService {
           );
         } else {
           await ctx.reply(
-            `Не знайдено запису для користувача ${ctx.session.cancelName}.`,
+            `Не знайдено запису для користувача "${ctx.session.cancelName}".`,
           );
         }
 
@@ -78,38 +114,7 @@ export class UserInputsService {
         break;
 
       default:
-        await ctx.reply("Для початку введіть ваше ім'я.");
         ctx.session.step = 'cancel_appointment';
-    }
-  }
-
-  async handleDefaultStep(ctx: BotContext) {
-    const message = ctx.message as Message;
-
-    if (this.isTextMessage(message) && message.text === 'Записатись') {
-      ctx.session = {};
-      await ctx.reply(
-        "Вітаємо! Ви можете записатися на зустріч. Введіть ваше ім'я:",
-      );
-      ctx.session.step = 'waiting_for_name';
-    } else if (
-      this.isTextMessage(message) &&
-      message.text === 'Відмінити запис'
-    ) {
-      ctx.session = {};
-      await ctx.reply("Для початку введіть ваше ім'я:");
-      ctx.session.step = 'cancel_appointment';
-    } else {
-      await ctx.reply(
-        'Будь ласка, натисніть "Записатись", щоб почати процес запису на зустріч.',
-        {
-          reply_markup: {
-            keyboard: [['Записатись', 'Відмінити запис']],
-            one_time_keyboard: true,
-            resize_keyboard: true,
-          },
-        },
-      );
     }
   }
 
