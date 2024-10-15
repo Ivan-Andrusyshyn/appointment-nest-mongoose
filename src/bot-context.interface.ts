@@ -7,6 +7,9 @@ export interface SessionData {
   appointmentDate?: Date | string;
   createdAt?: Date;
   step?: string;
+  cancelName?: string;
+  cancelEmail?: string;
+  cancelStep?: string;
 }
 
 export interface BotContext extends Context {

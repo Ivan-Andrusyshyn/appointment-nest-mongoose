@@ -14,12 +14,18 @@ export class AppointmentService {
     private meetingModel: Model<AppointmentDocument>,
   ) {}
 
-  async createMeeting(appointmentDto: AppointmentDto) {
+  async createAppointment(appointmentDto: AppointmentDto) {
     const newMeeting = new this.meetingModel(appointmentDto);
     return newMeeting.save();
   }
+  async deleteAppointment(
+    name: string,
+    email: string,
+  ): Promise<Appointment | null> {
+    return this.meetingModel.findOneAndDelete({ name, email });
+  }
 
-  async getMeetings(username: string): Promise<Appointment[]> {
-    return this.meetingModel.find({ username });
+  async getAppointments(name: string): Promise<Appointment[]> {
+    return this.meetingModel.find({ name });
   }
 }

@@ -35,25 +35,34 @@ export class AppService {
 
     const userMessage = message.text;
 
-    switch (ctx.session.step) {
-      case 'waiting_for_name':
-        await this.userInputsService.handleNameInput(ctx, userMessage);
-        break;
+    this.handleButtons(userMessage, ctx);
 
-      case 'waiting_for_phone':
-        await this.userInputsService.handlePhoneInput(ctx, userMessage);
-        break;
+    this.handleSwitcher(ctx, userMessage);
+  }
 
-      case 'waiting_for_email':
-        await this.userInputsService.handleEmailInput(ctx, userMessage);
-        break;
-
-      case 'waiting_for_date':
-        await this.userInputsService.handleDateInput(ctx, userMessage);
-        break;
-
-      default:
-        await this.userInputsService.handleDefaultStep(ctx);
+  private async handleButtons(userMessage, ctx) {
+    if (userMessage === 'Підтвердити') {
+      const { name, phone, email, appointmentDate } = ctx.session;
+      await ctx.reply(
+        `Вашу зустріч заброньовано на ${appointmentDate.toLocaleString('uk-UA', this.normalizeReplyDate)}`,
+      );
+      await this.appointmentService.createAppointment({
+        name,
+        phone,
+        email,
+        appointmentDate,
+        createdAt: new Date(),
+      });
+      ctx.session = {};
+      return;
+    }
+    if (userMessage === 'Змінити') {
+      ctx.session = {};
+      await ctx.reply(
+        "Вітаємо! Ви можете записатися на зустріч. Введіть ваше ім'я:",
+      );
+      ctx.session.step = 'waiting_for_name';
+      return;
     }
   }
 
@@ -86,14 +95,39 @@ export class AppService {
         createdAt: new Date(),
       };
 
-      await this.appointmentService.createMeeting(appointmentDto);
-      ctx.session = {};
       await this.showFilledForm(ctx, appointmentDto);
     } else {
       await ctx.reply('Помилка! Не вдалося отримати час. Спробуйте ще раз.');
     }
   }
+  private async handleSwitcher(ctx, userMessage) {
+    switch (ctx.session.step) {
+      case 'waiting_for_name':
+        await this.userInputsService.handleNameInput(ctx, userMessage);
+        break;
 
+      case 'waiting_for_phone':
+        await this.userInputsService.handlePhoneInput(ctx, userMessage);
+        break;
+
+      case 'waiting_for_email':
+        await this.userInputsService.handleEmailInput(ctx, userMessage);
+        break;
+
+      case 'waiting_for_date':
+        await this.userInputsService.handleDateInput(ctx, userMessage);
+        break;
+      case 'cancel_appointment':
+        await this.userInputsService.cancelAppointment(ctx, userMessage);
+        break;
+      case 'waiting_for_cancel_email':
+        await this.userInputsService.cancelAppointment(ctx, userMessage);
+        await this.userInputsService.handleDefaultStep(ctx);
+        break;
+      default:
+        await this.userInputsService.handleDefaultStep(ctx);
+    }
+  }
   private async showFilledForm(
     ctx: BotContext,
     appointmentDto: AppointmentDto,
@@ -120,32 +154,6 @@ export class AppService {
         },
       },
     );
-  }
-  @Action('Підтвердити')
-  async onConfirm(@Ctx() ctx: BotContext) {
-    const { name, phone, email, appointmentDate } = ctx.session;
-
-    await this.appointmentService.createMeeting({
-      name,
-      phone,
-      email,
-      appointmentDate,
-      createdAt: new Date(),
-    });
-    ctx.session = {};
-
-    await ctx.reply(
-      `Вашу зустріч заброньовано на ${appointmentDate.toLocaleString('uk-UA', this.normalizeReplyDate)}`,
-    );
-  }
-
-  @Action('Змінити')
-  async onChange(@Ctx() ctx: BotContext) {
-    ctx.session = {};
-    await ctx.reply(
-      "Вітаємо! Ви можете записатися на зустріч. Введіть ваше ім'я:",
-    );
-    ctx.session.step = 'waiting_for_name';
   }
 
   private get normalizeReplyDate(): Intl.DateTimeFormatOptions {
