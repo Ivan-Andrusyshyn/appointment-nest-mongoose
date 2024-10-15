@@ -25,7 +25,7 @@ export class UserInputsService {
       await ctx.reply("Для початку введіть ваше ім'я:");
       ctx.session.step = 'cancel_appointment';
     } else {
-      await ctx.reply('', {
+      await ctx.reply('Оберіть дію:', {
         reply_markup: {
           keyboard: [['Записатись', 'Відмінити запис']],
           one_time_keyboard: true,
@@ -114,7 +114,7 @@ export class UserInputsService {
         break;
 
       default:
-        ctx.session.step = 'cancel_appointment';
+        ctx.session = {};
     }
   }
 

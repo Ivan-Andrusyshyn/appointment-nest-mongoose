@@ -44,11 +44,10 @@ export class AppService {
     if (userMessage === 'Підтвердити') {
       const { name, phone, email, appointmentDate } = ctx.session;
       if (!name || !phone || !email || !appointmentDate) {
-        ctx.session.step = 'waiting_for_name';
+        ctx.session = {};
+        return;
       }
-      await ctx.reply(
-        `Вашу зустріч заброньовано на ${appointmentDate.toLocaleString('uk-UA', this.normalizeReplyDate)}`,
-      );
+
       await this.appointmentService.createAppointment({
         name,
         phone,
@@ -56,6 +55,9 @@ export class AppService {
         appointmentDate,
         createdAt: new Date(),
       });
+      await ctx.reply(
+        `Вашу зустріч заброньовано на ${appointmentDate.toLocaleString('uk-UA', this.normalizeReplyDate)}`,
+      );
       ctx.session = {};
       return;
     }
@@ -64,7 +66,6 @@ export class AppService {
       await ctx.reply(
         "Вітаємо! Ви можете записатися на зустріч. Введіть ваше ім'я:",
       );
-      ctx.session.step = 'waiting_for_name';
       return;
     }
   }
@@ -106,10 +107,16 @@ export class AppService {
   private async handleSwitcher(ctx, userMessage) {
     if (userMessage === 'Відмінити запис') {
       ctx.session = {};
+      await ctx.reply("Ви можете скасувати зустріч. Введіть ваше ім'я:");
+      ctx.session.step = 'cancel_appointment';
+      return;
+    }
+    if (userMessage === 'Записатись') {
+      ctx.session = {};
       await ctx.reply(
         "Вітаємо! Ви можете записатися на зустріч. Введіть ваше ім'я:",
       );
-      ctx.session.step = 'cancel_appointment';
+      ctx.session.step = 'waiting_for_name';
       return;
     }
 
