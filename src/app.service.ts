@@ -37,17 +37,23 @@ export class AppService {
 
     this.handleButtons(userMessage, ctx);
 
-    this.handleSwitcher(ctx, userMessage);
+    this.mainController(userMessage, ctx);
   }
 
-  private async handleButtons(userMessage, ctx) {
+  private async handleButtons(userMessage: string, ctx: BotContext) {
     if (userMessage === 'Підтвердити') {
       const { name, phone, email, appointmentDate } = ctx.session;
       if (!name || !phone || !email || !appointmentDate) {
         ctx.session = {};
         return;
       }
-
+      await ctx.reply('Оберіть дію:', {
+        reply_markup: {
+          keyboard: [['Записатись', 'Відмінити запис']],
+          one_time_keyboard: true,
+          resize_keyboard: true,
+        },
+      });
       await this.appointmentService.createAppointment({
         name,
         phone,
@@ -104,21 +110,41 @@ export class AppService {
       await ctx.reply('Помилка! Не вдалося отримати час. Спробуйте ще раз.');
     }
   }
-  private async handleSwitcher(ctx, userMessage) {
-    if (userMessage === 'Відмінити запис') {
-      ctx.session = {};
-      await ctx.reply("Ви можете скасувати зустріч. Введіть ваше ім'я:");
-      ctx.session.step = 'cancel_appointment';
-      return;
+  private async mainController(userMessage: string, ctx: BotContext) {
+    switch (userMessage) {
+      case 'Відмінити запис':
+        ctx.session = {};
+        await ctx.reply("Ви можете скасувати зустріч. Введіть ваше ім'я:");
+        ctx.session.step = 'cancel_appointment';
+        return;
+      case 'Записатись':
+        ctx.session = {};
+        await ctx.reply('Вітаємо! Ви можете записатися на зустріч.');
+        await ctx.reply("Введіть ваше ім'я:", {
+          reply_markup: {
+            keyboard: [['Скасувати']],
+            one_time_keyboard: true,
+            resize_keyboard: true,
+          },
+        });
+        ctx.session.step = 'waiting_for_name';
+        return;
+      case 'Скасувати':
+        ctx.session = {};
+        await ctx.reply('Оберіть дію:', {
+          reply_markup: {
+            keyboard: [['Записатись', 'Відмінити запис']],
+            one_time_keyboard: true,
+            resize_keyboard: true,
+          },
+        });
     }
-    if (userMessage === 'Записатись') {
-      ctx.session = {};
-      await ctx.reply(
-        "Вітаємо! Ви можете записатися на зустріч. Введіть ваше ім'я:",
-      );
-      ctx.session.step = 'waiting_for_name';
-      return;
-    }
+
+    await this.handleSwitch(ctx, userMessage);
+  }
+
+  private async handleSwitch(ctx: BotContext, userMessage: string) {
+    console.log(ctx.session.step);
 
     switch (ctx.session.step) {
       case 'waiting_for_name':
@@ -142,10 +168,9 @@ export class AppService {
       case 'waiting_for_cancel_email':
         await this.userInputsService.cancelAppointment(ctx, userMessage);
         break;
-      default:
-        await this.userInputsService.initBot(ctx);
     }
   }
+
   private async showFilledForm(
     ctx: BotContext,
     appointmentDto: AppointmentDto,

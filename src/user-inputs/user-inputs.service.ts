@@ -11,30 +11,6 @@ export class UserInputsService {
     private tgInterfaceService: TgInterfaceService,
   ) {}
 
-  async initBot(ctx: BotContext) {
-    const message = ctx.message as Message;
-    if (!this.isTextMessage(message)) return;
-    if (message.text === 'Записатись') {
-      ctx.session = {};
-      await ctx.reply(
-        "Вітаємо! Ви можете записатися на зустріч. Введіть ваше ім'я:",
-      );
-      ctx.session.step = 'waiting_for_name';
-    } else if (message.text === 'Відмінити запис') {
-      ctx.session = {};
-      await ctx.reply("Для початку введіть ваше ім'я:");
-      ctx.session.step = 'cancel_appointment';
-    } else {
-      await ctx.reply('Оберіть дію:', {
-        reply_markup: {
-          keyboard: [['Записатись', 'Відмінити запис']],
-          one_time_keyboard: true,
-          resize_keyboard: true,
-        },
-      });
-    }
-  }
-
   async handleNameInput(ctx: BotContext, userMessage: string) {
     ctx.session.name = userMessage;
     ctx.session.step = 'waiting_for_phone';
