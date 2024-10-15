@@ -8,6 +8,9 @@ This is a Telegram bot developed using NestJS and Telegraf, allowing users to sc
 - Collecting user information (name, phone number, email).
 - Selecting appointment date and time.
 - Confirmation of appointment.
+- Show resrved times
+- Handle between reserved and free times
+- Cancel appointment.
 
 ## Installation
 
