@@ -8,6 +8,7 @@ import { telegrafConfig } from './configs/telegrafModule.config';
 import { AppointmentModule } from './appointment/appointment.module';
 import { TgInterfaceModule } from './tg-interface/tg-interface.module';
 import { UserInputsModule } from './user-inputs/user-inputs.module';
+import { StepService } from './step.service';
 
 @Module({
   imports: [
@@ -19,6 +20,6 @@ import { UserInputsModule } from './user-inputs/user-inputs.module';
     UserInputsModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, StepService],
 })
 export class AppModule {}

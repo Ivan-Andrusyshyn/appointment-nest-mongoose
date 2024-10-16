@@ -55,7 +55,7 @@ export class UserInputsService {
         if (userMessage === 'Записатись') {
           ctx.session = {};
           await ctx.reply(
-            "Вітаємо! Ви можете записатися на зустріч. Введіть ваше ім'я:",
+            "👋 Вітаємо! Ви можете записатися на зустріч. Введіть ваше ім'я:",
           );
           ctx.session.step = 'waiting_for_name';
           break;
@@ -65,7 +65,7 @@ export class UserInputsService {
 
       case 'waiting_for_cancel_email':
         if (!this.validateEmail(userMessage)) {
-          await ctx.reply('Будь ласка, введіть коректну електронну пошту.');
+          await ctx.reply('❗ Будь ласка, введіть коректну електронну пошту.');
           return;
         }
         ctx.session.cancelEmail = userMessage;
@@ -78,11 +78,12 @@ export class UserInputsService {
 
         if (deletedAppointment) {
           await ctx.reply(
-            `Запис на зустріч для користувача ${ctx.session.cancelName} успішно скасовано.`,
+            `✅ Запис на зустріч для користувача ${ctx.session.cancelName} успішно скасовано.`,
           );
+          this.tgInterfaceService.handleMainKeyboards(ctx, 'Скасувати');
         } else {
           await ctx.reply(
-            `Не знайдено запису для користувача "${ctx.session.cancelName}".`,
+            `❌ Не знайдено запису для користувача "${ctx.session.cancelName}".`,
           );
         }
 

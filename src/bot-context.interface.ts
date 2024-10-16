@@ -10,6 +10,7 @@ export interface SessionData {
   cancelName?: string;
   cancelEmail?: string;
   cancelStep?: string;
+  messageIds?: number[];
 }
 
 export interface BotContext extends Context {

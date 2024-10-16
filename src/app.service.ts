@@ -2,24 +2,24 @@ import { Ctx, Update, Start, Action, On } from 'nestjs-telegraf';
 import { Message } from 'telegraf/typings/core/types/typegram';
 
 import { BotContext } from './bot-context.interface';
-import { AppointmentService } from './appointment/appointment.service';
 import { AppointmentDto } from './appointment/dto/appointment.dto';
 import { TgInterfaceService } from './tg-interface/tg-interface.service';
 import { UserInputsService } from './user-inputs/user-inputs.service';
+import { StepService } from './step.service';
 
 @Update()
 export class AppService {
   constructor(
     private readonly tgInterfaceService: TgInterfaceService,
     private readonly userInputsService: UserInputsService,
-    private readonly appointmentService: AppointmentService,
+    private readonly stepService: StepService,
   ) {}
 
   @Start()
   async startCommand(@Ctx() ctx: BotContext) {
     ctx.session = {};
     await ctx.reply(
-      "Вітаємо! Ви можете записатися на зустріч. Введіть ваше ім'я:",
+      "👋 Вітаємо! Ви можете записатися на зустріч. Введіть ваше ім'я:",
     );
     ctx.session.step = 'waiting_for_name';
   }
@@ -27,53 +27,13 @@ export class AppService {
   @On('text')
   async onText(@Ctx() ctx: BotContext) {
     const message = ctx.message as Message;
-
     if (!this.userInputsService.isTextMessage(message)) {
-      await ctx.reply('Будь ласка, надішліть текстове повідомлення.');
+      await ctx.reply('❗Будь ласка, надішліть текстове повідомлення.');
       return;
     }
+    this.stepService.handleFinishConfirmBtn(message.text, ctx);
 
-    const userMessage = message.text;
-
-    this.handleButtons(userMessage, ctx);
-
-    this.mainController(userMessage, ctx);
-  }
-
-  private async handleButtons(userMessage: string, ctx: BotContext) {
-    if (userMessage === 'Підтвердити') {
-      const { name, phone, email, appointmentDate } = ctx.session;
-      if (!name || !phone || !email || !appointmentDate) {
-        ctx.session = {};
-        return;
-      }
-      await ctx.reply('Оберіть дію:', {
-        reply_markup: {
-          keyboard: [['Записатись', 'Відмінити запис']],
-          one_time_keyboard: true,
-          resize_keyboard: true,
-        },
-      });
-      await this.appointmentService.createAppointment({
-        name,
-        phone,
-        email,
-        appointmentDate,
-        createdAt: new Date(),
-      });
-      await ctx.reply(
-        `Вашу зустріч заброньовано на ${appointmentDate.toLocaleString('uk-UA', this.normalizeReplyDate)}`,
-      );
-      ctx.session = {};
-      return;
-    }
-    if (userMessage === 'Змінити') {
-      ctx.session = {};
-      await ctx.reply(
-        "Вітаємо! Ви можете записатися на зустріч. Введіть ваше ім'я:",
-      );
-      return;
-    }
+    this.stepService.dispatchOnAction(message.text, ctx);
   }
 
   @Action(/date_(.+)/)
@@ -88,7 +48,9 @@ export class AppService {
         ctx.session.appointmentDate,
       );
     } else {
-      await ctx.reply('Помилка! Не вдалося отримати дату. Спробуйте ще раз.');
+      await ctx.reply(
+        '⚠️ Помилка! Не вдалося отримати дату. Спробуйте ще раз.',
+      );
     }
   }
 
@@ -107,67 +69,7 @@ export class AppService {
 
       await this.showFilledForm(ctx, appointmentDto);
     } else {
-      await ctx.reply('Помилка! Не вдалося отримати час. Спробуйте ще раз.');
-    }
-  }
-  private async mainController(userMessage: string, ctx: BotContext) {
-    switch (userMessage) {
-      case 'Відмінити запис':
-        ctx.session = {};
-        await ctx.reply("Ви можете скасувати зустріч. Введіть ваше ім'я:");
-        ctx.session.step = 'cancel_appointment';
-        return;
-      case 'Записатись':
-        ctx.session = {};
-        await ctx.reply('Вітаємо! Ви можете записатися на зустріч.');
-        await ctx.reply("Введіть ваше ім'я:", {
-          reply_markup: {
-            keyboard: [['Скасувати']],
-            one_time_keyboard: true,
-            resize_keyboard: true,
-          },
-        });
-        ctx.session.step = 'waiting_for_name';
-        return;
-      case 'Скасувати':
-        ctx.session = {};
-        await ctx.reply('Оберіть дію:', {
-          reply_markup: {
-            keyboard: [['Записатись', 'Відмінити запис']],
-            one_time_keyboard: true,
-            resize_keyboard: true,
-          },
-        });
-    }
-
-    await this.handleSwitch(ctx, userMessage);
-  }
-
-  private async handleSwitch(ctx: BotContext, userMessage: string) {
-    console.log(ctx.session.step);
-
-    switch (ctx.session.step) {
-      case 'waiting_for_name':
-        await this.userInputsService.handleNameInput(ctx, userMessage);
-        break;
-
-      case 'waiting_for_phone':
-        await this.userInputsService.handlePhoneInput(ctx, userMessage);
-        break;
-
-      case 'waiting_for_email':
-        await this.userInputsService.handleEmailInput(ctx, userMessage);
-        break;
-
-      case 'waiting_for_date':
-        await this.userInputsService.handleDateInput(ctx, userMessage);
-        break;
-      case 'cancel_appointment':
-        await this.userInputsService.cancelAppointment(ctx, userMessage);
-        break;
-      case 'waiting_for_cancel_email':
-        await this.userInputsService.cancelAppointment(ctx, userMessage);
-        break;
+      await ctx.reply('⚠️ Помилка! Не вдалося отримати час. Спробуйте ще раз.');
     }
   }
 
@@ -176,36 +78,17 @@ export class AppService {
     appointmentDto: AppointmentDto,
   ) {
     const message = `
-      **Ваші дані для запису:**
+      📝 **Ваші дані для запису:**
       - Ім'я: ${appointmentDto.name}
       - Телефон: ${appointmentDto.phone}
       - Email: ${appointmentDto.email}
-      - Дата зустрічі: ${appointmentDto.appointmentDate.toLocaleString(
+      - 📅 Дата зустрічі: ${appointmentDto.appointmentDate.toLocaleString(
         'uk-UA',
-        this.normalizeReplyDate,
+        this.stepService.normalizeReplyDate,
       )}`;
 
     await ctx.reply(message, { parse_mode: 'Markdown' });
 
-    await ctx.reply(
-      'Якщо все правильно, натисніть "Підтвердити". Якщо потрібно внести зміни, натисніть "Змінити".',
-      {
-        reply_markup: {
-          keyboard: [['Підтвердити'], ['Змінити']],
-          one_time_keyboard: true,
-          resize_keyboard: true,
-        },
-      },
-    );
-  }
-
-  private get normalizeReplyDate(): Intl.DateTimeFormatOptions {
-    return {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    };
+    this.tgInterfaceService.handleMainKeyboards(ctx, 'Підтвердити');
   }
 }

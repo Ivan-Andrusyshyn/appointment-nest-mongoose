@@ -8,6 +8,12 @@ import {
   AppointmentDocument,
 } from 'src/models/appointment.schema';
 
+type mainSelectorsType =
+  | 'Підтвердити'
+  | 'Підтвердити запис'
+  | 'Записатись'
+  | 'Скасувати';
+
 @Injectable()
 export class TgInterfaceService {
   constructor(
@@ -76,7 +82,39 @@ export class TgInterfaceService {
       },
     });
   }
-
+  async handleMainKeyboards(ctx, select: mainSelectorsType) {
+    switch (select) {
+      case 'Скасувати':
+        await ctx.reply('🔄 Оберіть дію:', {
+          reply_markup: {
+            keyboard: [['Записатись', 'Відмінити запис']],
+            one_time_keyboard: true,
+            resize_keyboard: true,
+          },
+        });
+        break;
+      case 'Записатись':
+        await ctx.reply("📝 Введіть ваше ім'я:", {
+          reply_markup: {
+            keyboard: [['Скасувати']],
+            one_time_keyboard: true,
+            resize_keyboard: true,
+          },
+        });
+        break;
+      case 'Підтвердити':
+        await ctx.reply(
+          '✅  Якщо все правильно, натисніть "Підтвердити". Якщо потрібно внести зміни, натисніть "Змінити".',
+          {
+            reply_markup: {
+              keyboard: [['Підтвердити'], ['Змінити']],
+              one_time_keyboard: true,
+              resize_keyboard: true,
+            },
+          },
+        );
+    }
+  }
   async sendDateKeyboard(ctx: BotContext) {
     const currentDate = new Date();
     const buttons = [];
